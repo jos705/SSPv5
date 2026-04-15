@@ -6,7 +6,10 @@ from sqlalchemy import func, or_
 
 from .config import Config
 from .extensions import csrf, db, login_manager, migrate
-from .models import Cluster, Node, PgInstance, TeamClusterPermission, User, UserRole  # noqa: F401
+from .models import (  # noqa: F401
+    Cluster, DatabaseAsset, DatabaseRequest, Node, OperationLog,
+    PgInstance, TeamClusterPermission, User, UserRole,
+)
 
 
 def create_app(config_object: type[Config] = Config) -> Flask:
@@ -40,11 +43,13 @@ def _init_extensions(app: Flask) -> None:
 def _register_blueprints(app: Flask) -> None:
     from .admin import bp as admin_bp
     from .auth import bp as auth_bp
+    from .databases import bp as databases_bp
     from .main import bp as main_bp
 
     app.register_blueprint(main_bp)
     app.register_blueprint(auth_bp)
     app.register_blueprint(admin_bp)
+    app.register_blueprint(databases_bp)
 
 
 def _register_error_handlers(app: Flask) -> None:

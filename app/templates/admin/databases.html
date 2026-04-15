@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}Databases - Admin{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Databases</h1>
+    <a href="{{ url_for('admin.register_dba_database') }}" class="btn btn-outline-primary">Register DBA database</a>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Instance</th>
+            <th>Cluster</th>
+            <th>Team</th>
+            <th>Provenance</th>
+            <th>Status</th>
+            <th>Created</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+            <tr>
+              <td class="fw-semibold font-monospace">{{ asset.name }}</td>
+              <td class="small font-monospace text-body-secondary">{{ asset.instance.hostname }}:{{ asset.instance.port }}</td>
+              <td>{{ asset.instance.cluster.name }}</td>
+              <td>{{ asset.team.name if asset.team else '—' }}</td>
+              <td>
+                {% if asset.provenance == 'dba' %}
+                  <span class="badge text-bg-warning text-dark">DBA</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Team</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if asset.status == 'active' %}
+                  <span class="badge text-bg-success">Active</span>
+                {% elif asset.status == 'deleting' %}
+                  <span class="badge text-bg-warning text-dark">Pending deletion</span>
+                {% else %}
+                  <span class="badge text-bg-danger">{{ asset.status|capitalize }}</span>
+                {% endif %}
+              </td>
+              <td class="small text-body-secondary">{{ asset.created_at.strftime('%Y-%m-%d') }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-body-secondary py-4">No databases registered.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

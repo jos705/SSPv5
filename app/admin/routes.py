@@ -8,7 +8,10 @@ from . import bp
 from .forms import ClusterForm, TeamClusterPermissionForm, TeamForm, UserCreateForm, UserEditForm
 from ..decorators import admin_required
 from ..extensions import db
-from ..models import Cluster, ClusterStatus, Node, TeamClusterPermission, Team, User, UserRole
+from ..models import (
+    Cluster, ClusterStatus, DatabaseAsset, DatabaseProvenance, DatabaseRequest,
+    DbAssetStatus, Node, PgInstance, RequestStatus, Team, TeamClusterPermission, User, UserRole,
+)
 
 
 @bp.route("/")
@@ -20,6 +23,9 @@ def dashboard():
         team_count=Team.query.count(),
         admin_count=User.query.filter_by(role=UserRole.ADMIN.value).count(),
         cluster_count=Cluster.query.count(),
+        pending_requests_count=DatabaseRequest.query.filter_by(
+            status=RequestStatus.PENDING.value
+        ).count(),
     )
 
 
@@ -376,4 +382,108 @@ def revoke_cluster_permission(cluster_id: int, perm_id: int):
     db.session.commit()
     flash("Access revoked.", "success")
     return redirect(url_for("admin.cluster_detail", cluster_id=cluster_id))
+
+
+# ---------------------------------------------------------------------------
+# Database inventory
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/databases")
+@admin_required
+def databases():
+    all_assets = (
+        DatabaseAsset.query
+        .filter(DatabaseAsset.status != DbAssetStatus.DELETED.value)
+        .order_by(DatabaseAsset.created_at.desc())
+        .all()
+    )
+    return render_template("admin/databases.html", assets=all_assets)
+
+
+@bp.route("/databases/register", methods=["GET", "POST"])
+@admin_required
+def register_dba_database():
+    """Register a DBA-created database so users can see it and request deletion."""
+    instances = PgInstance.query.order_by(PgInstance.instance_name.asc()).all()
+    teams = Team.query.order_by(Team.name.asc()).all()
+
+    if request.method == "POST":
+        from ..services.approval_workflow import ApprovalWorkflowService
+        instance_id = request.form.get("instance_id", type=int)
+        db_name = (request.form.get("database_name") or "").strip()
+        team_id = request.form.get("team_id", type=int)
+
+        instance = db.session.get(PgInstance, instance_id)
+        if not instance or not db_name or not team_id:
+            flash("All fields are required.", "danger")
+        else:
+            svc = ApprovalWorkflowService(current_user)
+            svc.register_dba_database(instance, db_name, team_id)
+            flash(f"DBA database '{db_name}' registered.", "success")
+            return redirect(url_for("admin.databases"))
+
+    return render_template(
+        "admin/register_dba_database.html", instances=instances, teams=teams
+    )
+
+
+# ---------------------------------------------------------------------------
+# Request approval queue
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/requests")
+@admin_required
+def requests_queue():
+    pending = (
+        DatabaseRequest.query
+        .filter_by(status=RequestStatus.PENDING.value)
+        .order_by(DatabaseRequest.requested_at.asc())
+        .all()
+    )
+    return render_template("admin/requests.html", requests=pending)
+
+
+@bp.route("/requests/<int:req_id>")
+@admin_required
+def request_detail(req_id: int):
+    req = DatabaseRequest.query.get_or_404(req_id)
+    return render_template("admin/request_detail.html", req=req)
+
+
+@bp.route("/requests/<int:req_id>/approve", methods=["POST"])
+@admin_required
+def approve_request(req_id: int):
+    from ..services.approval_workflow import ApprovalWorkflowService, WorkflowError
+    req = DatabaseRequest.query.get_or_404(req_id)
+    note = (request.form.get("note") or "").strip()
+    svc = ApprovalWorkflowService(current_user)
+    try:
+        ok, output = svc.approve(req, note=note)
+        if ok:
+            flash(f"Request #{req_id} approved and executed successfully.", "success")
+        else:
+            flash(f"Request #{req_id} approved but execution failed. Check the request detail.", "warning")
+    except WorkflowError as e:
+        flash(str(e), "danger")
+    return redirect(url_for("admin.request_detail", req_id=req_id))
+
+
+@bp.route("/requests/<int:req_id>/reject", methods=["POST"])
+@admin_required
+def reject_request(req_id: int):
+    from ..services.approval_workflow import ApprovalWorkflowService, WorkflowError
+    req = DatabaseRequest.query.get_or_404(req_id)
+    note = (request.form.get("note") or "").strip()
+    if not note:
+        flash("A rejection note is required.", "danger")
+        return redirect(url_for("admin.request_detail", req_id=req_id))
+    svc = ApprovalWorkflowService(current_user)
+    try:
+        svc.reject(req, note=note)
+        flash(f"Request #{req_id} rejected.", "success")
+    except WorkflowError as e:
+        flash(str(e), "danger")
+    return redirect(url_for("admin.requests_queue"))
 

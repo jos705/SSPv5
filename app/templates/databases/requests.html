@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}My Requests{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">My requests</h1>
+    <a href="{{ url_for('databases.dashboard') }}" class="btn btn-outline-secondary btn-sm">← Databases</a>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Database</th>
+            <th>Instance</th>
+            <th>Status</th>
+            <th>Submitted</th>
+            <th>Reviewed</th>
+            <th>Note</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in requests %}
+            <tr>
+              <td class="text-body-secondary">{{ req.id }}</td>
+              <td>
+                {% if req.request_type == 'create' %}
+                  <span class="badge text-bg-primary">Create</span>
+                {% else %}
+                  <span class="badge text-bg-danger">Delete</span>
+                {% endif %}
+              </td>
+              <td class="fw-semibold font-monospace">{{ req.database_name }}</td>
+              <td class="small font-monospace text-body-secondary">{{ req.instance.hostname }}:{{ req.instance.port }}</td>
+              <td>
+                {% if req.status == 'pending' %}
+                  <span class="badge text-bg-warning text-dark">Pending</span>
+                {% elif req.status == 'completed' %}
+                  <span class="badge text-bg-success">Completed</span>
+                {% elif req.status == 'rejected' %}
+                  <span class="badge text-bg-danger">Rejected</span>
+                {% elif req.status == 'failed' %}
+                  <span class="badge text-bg-danger">Failed</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">{{ req.status|capitalize }}</span>
+                {% endif %}
+              </td>
+              <td class="small text-body-secondary">{{ req.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td class="small text-body-secondary">
+                {{ req.reviewed_at.strftime('%Y-%m-%d %H:%M') if req.reviewed_at else '—' }}
+              </td>
+              <td class="small text-body-secondary">{{ req.review_note or '—' }}</td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-body-secondary py-4">No requests yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,134 @@
+{% extends "base.html" %}
+{% block title %}Request #{{ req.id }} - Admin{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Request #{{ req.id }}</h1>
+    <a href="{{ url_for('admin.requests_queue') }}" class="btn btn-outline-secondary btn-sm">← Queue</a>
+  </div>
+
+  {# Metadata cards #}
+  <div class="row g-3 mb-4">
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body">
+          <div class="text-body-secondary small">Type</div>
+          <div class="mt-1">
+            {% if req.request_type == 'create' %}
+              <span class="badge text-bg-primary fs-6">Create</span>
+            {% else %}
+              <span class="badge text-bg-danger fs-6">Delete</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body">
+          <div class="text-body-secondary small">Status</div>
+          <div class="mt-1">
+            {% if req.status == 'pending' %}
+              <span class="badge text-bg-warning text-dark fs-6">Pending</span>
+            {% elif req.status == 'completed' %}
+              <span class="badge text-bg-success fs-6">Completed</span>
+            {% elif req.status == 'rejected' %}
+              <span class="badge text-bg-danger fs-6">Rejected</span>
+            {% elif req.status == 'failed' %}
+              <span class="badge text-bg-danger fs-6">Failed</span>
+            {% else %}
+              <span class="badge text-bg-secondary fs-6">{{ req.status|capitalize }}</span>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body">
+          <div class="text-body-secondary small">Database</div>
+          <div class="fw-semibold font-monospace">{{ req.database_name }}</div>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card stat-card h-100">
+        <div class="card-body">
+          <div class="text-body-secondary small">Instance</div>
+          <div class="fw-semibold font-monospace">{{ req.instance.hostname }}:{{ req.instance.port }}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3 mb-4">
+    <div class="col-md-6">
+      <dl class="row mb-0">
+        <dt class="col-sm-5">Team</dt>
+        <dd class="col-sm-7">{{ req.team.name if req.team else '—' }}</dd>
+        <dt class="col-sm-5">Requested by</dt>
+        <dd class="col-sm-7">{{ req.requested_by.username if req.requested_by else '—' }}</dd>
+        <dt class="col-sm-5">Submitted</dt>
+        <dd class="col-sm-7">{{ req.requested_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+        {% if req.reviewed_by %}
+          <dt class="col-sm-5">Reviewed by</dt>
+          <dd class="col-sm-7">{{ req.reviewed_by.username }}</dd>
+          <dt class="col-sm-5">Reviewed at</dt>
+          <dd class="col-sm-7">{{ req.reviewed_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+        {% endif %}
+        {% if req.review_note %}
+          <dt class="col-sm-5">Note</dt>
+          <dd class="col-sm-7">{{ req.review_note }}</dd>
+        {% endif %}
+      </dl>
+    </div>
+  </div>
+
+  {% if req.operation_output %}
+    <h2 class="h5 mb-2">Operation output</h2>
+    <div class="card mb-4">
+      <div class="card-body">
+        <pre class="mb-0 small font-monospace" style="white-space:pre-wrap;">{{ req.operation_output }}</pre>
+      </div>
+    </div>
+  {% endif %}
+
+  {# Approve / Reject forms — only shown when pending #}
+  {% if req.status == 'pending' %}
+    <div class="row g-3">
+      <div class="col-md-6">
+        <h2 class="h5 mb-2">Approve</h2>
+        <div class="card">
+          <div class="card-body">
+            <form method="post" action="{{ url_for('admin.approve_request', req_id=req.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="mb-3">
+                <label class="form-label">Note (optional)</label>
+                <textarea name="note" class="form-control" rows="2" placeholder="Optional note visible to the requester"></textarea>
+              </div>
+              <button type="submit" class="btn btn-success"
+                      onclick="return confirm('Approve and execute this request?');">
+                Approve &amp; execute
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <h2 class="h5 mb-2">Reject</h2>
+        <div class="card">
+          <div class="card-body">
+            <form method="post" action="{{ url_for('admin.reject_request', req_id=req.id) }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <div class="mb-3">
+                <label class="form-label">Rejection note <span class="text-danger">*</span></label>
+                <textarea name="note" class="form-control" rows="2" required
+                          placeholder="Explain why the request is rejected"></textarea>
+              </div>
+              <button type="submit" class="btn btn-danger">Reject</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endblock %}

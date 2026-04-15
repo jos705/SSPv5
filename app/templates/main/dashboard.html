@@ -12,31 +12,43 @@
 
   {% if current_user.is_admin %}
     <div class="row g-3">
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
             <h2 class="h5">Administration</h2>
             <p class="text-body-secondary">
-              Manage teams and users from the admin control panel.
+              Manage teams, users, and clusters.
             </p>
-            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">Open admin dashboard</a>
+            <a href="{{ url_for('admin.dashboard') }}" class="btn btn-primary">Admin dashboard</a>
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
-            <h2 class="h5">Next phases</h2>
-            <p class="text-body-secondary mb-0">
-              Database request workflows and cluster management will be added in later phases.
+            <h2 class="h5">Databases</h2>
+            <p class="text-body-secondary">
+              View all databases across all teams.
             </p>
+            <a href="{{ url_for('admin.databases') }}" class="btn btn-outline-primary">Database inventory</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h5">Approval queue</h2>
+            <p class="text-body-secondary">
+              Review and action pending database requests.
+            </p>
+            <a href="{{ url_for('admin.requests_queue') }}" class="btn btn-outline-primary">Review requests</a>
           </div>
         </div>
       </div>
     </div>
   {% else %}
     <div class="row g-3">
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
             <h2 class="h5">Team</h2>
@@ -50,13 +62,25 @@
           </div>
         </div>
       </div>
-      <div class="col-md-6">
+      <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
-            <h2 class="h5">Next phases</h2>
-            <p class="text-body-secondary mb-0">
-              Database create/delete request screens are planned for the next implementation phases.
+            <h2 class="h5">Databases</h2>
+            <p class="text-body-secondary">
+              Create and manage your team's PostgreSQL databases.
             </p>
+            <a href="{{ url_for('databases.dashboard') }}" class="btn btn-primary">My databases</a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h5">Request history</h2>
+            <p class="text-body-secondary">
+              Track the status of your create/delete requests.
+            </p>
+            <a href="{{ url_for('databases.my_requests') }}" class="btn btn-outline-primary">My requests</a>
           </div>
         </div>
       </div>

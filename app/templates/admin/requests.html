@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+{% block title %}Pending Requests - Admin{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Pending requests</h1>
+    <a href="{{ url_for('admin.databases') }}" class="btn btn-outline-secondary btn-sm">Database inventory</a>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Type</th>
+            <th>Database</th>
+            <th>Instance</th>
+            <th>Team</th>
+            <th>Requested by</th>
+            <th>Submitted</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for req in requests %}
+            <tr>
+              <td class="text-body-secondary">{{ req.id }}</td>
+              <td>
+                {% if req.request_type == 'create' %}
+                  <span class="badge text-bg-primary">Create</span>
+                {% else %}
+                  <span class="badge text-bg-danger">Delete</span>
+                {% endif %}
+              </td>
+              <td class="fw-semibold font-monospace">{{ req.database_name }}</td>
+              <td class="small font-monospace text-body-secondary">{{ req.instance.hostname }}:{{ req.instance.port }}</td>
+              <td>{{ req.team.name if req.team else '—' }}</td>
+              <td>{{ req.requested_by.username if req.requested_by else '—' }}</td>
+              <td class="small text-body-secondary">{{ req.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('admin.request_detail', req_id=req.id) }}" class="btn btn-sm btn-outline-secondary">Review</a>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-body-secondary py-4">No pending requests.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
