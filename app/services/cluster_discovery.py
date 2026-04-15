@@ -119,20 +119,51 @@ class ClusterDiscoveryService:
             # --- Step 3: read postgrestab from the first reachable node
             instances_raw = self._read_instances_from_first_node()
 
-            # --- Step 4: atomically replace PgInstance records -------
-            PgInstance.query.filter_by(cluster_id=self.cluster.id).delete()
-            db.session.flush()
+            # --- Step 4: upsert PgInstance records -------------------
+            # We update existing rows in-place (preserving PKs so that
+            # DatabaseAsset / DatabaseRequest FK references stay valid),
+            # insert new ones, and only delete stale rows that have no
+            # referencing assets or requests.
+            existing: dict[tuple[str, int], PgInstance] = {
+                (i.hostname, i.port): i
+                for i in PgInstance.query.filter_by(cluster_id=self.cluster.id).all()
+            }
+            discovered_keys: set[tuple[str, int]] = set()
 
-            for inst in instances_raw:
-                db.session.add(
-                    PgInstance(
-                        cluster_id=self.cluster.id,
-                        hostname=inst["hostname"],
-                        port=inst["port"],
-                        instance_name=inst["instance_name"],
-                        pgdata_dir=inst["pgdata_dir"],
+            for raw in instances_raw:
+                key = (raw["hostname"], raw["port"])
+                discovered_keys.add(key)
+                if key in existing:
+                    # Update mutable fields; PK is untouched so FK refs survive.
+                    inst = existing[key]
+                    inst.instance_name = raw["instance_name"]
+                    inst.pgdata_dir = raw["pgdata_dir"]
+                else:
+                    db.session.add(
+                        PgInstance(
+                            cluster_id=self.cluster.id,
+                            hostname=raw["hostname"],
+                            port=raw["port"],
+                            instance_name=raw["instance_name"],
+                            pgdata_dir=raw["pgdata_dir"],
+                        )
                     )
-                )
+
+            # Delete stale instances only when nothing references them.
+            stale_skipped: list[str] = []
+            for key, inst in existing.items():
+                if key in discovered_keys:
+                    continue
+                if inst.database_assets or inst.database_requests:
+                    stale_skipped.append(f"{inst.hostname}:{inst.port}")
+                    log.warning(
+                        "Instance %s:%s no longer in postgrestab but has "
+                        "%d asset(s) / %d request(s) — keeping.",
+                        inst.hostname, inst.port,
+                        len(inst.database_assets), len(inst.database_requests),
+                    )
+                else:
+                    db.session.delete(inst)
 
             self.cluster.status = ClusterStatus.ACTIVE.value
             self.cluster.last_synced_at = datetime.now(timezone.utc)
@@ -140,6 +171,11 @@ class ClusterDiscoveryService:
             db.session.commit()
 
             summary = f"Discovered {len(instances_raw)} instance(s)."
+            if stale_skipped:
+                summary += (
+                    f" Note: {len(stale_skipped)} stale instance(s) kept because they "
+                    f"have associated database assets: {', '.join(stale_skipped)}."
+                )
             if warning:
                 summary += f" Warning: {warning}"
             log.info("Cluster '%s' synced. %s", self.cluster.name, summary)
