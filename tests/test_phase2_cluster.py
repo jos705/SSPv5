@@ -21,7 +21,9 @@ if str(PROJECT_ROOT) not in sys.path:
 
 from app import create_app
 from app.extensions import db
-from app.models import Cluster, ClusterStatus, Node, PgInstance, Team, User, UserRole
+from app.models import (
+    Cluster, ClusterStatus, DatabaseAsset, Node, PgInstance, Team, User, UserRole,
+)
 from app.services.cluster_discovery import ClusterDiscoveryService, DiscoveryError
 
 
@@ -253,6 +255,157 @@ class TestClusterDiscoveryService(unittest.TestCase):
         self.assertEqual(
             PgInstance.query.filter_by(cluster_id=self.cluster.id).count(), 2
         )
+
+    def test_resync_preserves_instance_pk_when_referenced(self) -> None:
+        """Re-syncing a cluster whose PgInstances are referenced by DatabaseAssets
+        must NOT delete and recreate those rows.  Deleting them would break the
+        FK reference (RESTRICT on PostgreSQL) and corrupt asset linkage on SQLite.
+        The instance's primary key must be identical before and after the sync.
+        """
+        files = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: "node1.example.com:5432:main:/var/lib/pgsql\n",
+        }
+        # Initial sync — creates the PgInstance row.
+        ok, _ = self._run_with_files(files)
+        self.assertTrue(ok)
+
+        instance = PgInstance.query.filter_by(cluster_id=self.cluster.id).one()
+        original_pk = instance.id
+
+        # Simulate a provisioned database that references this instance.
+        asset = DatabaseAsset(name="mydb", instance_id=instance.id)
+        db.session.add(asset)
+        db.session.commit()
+
+        # Re-sync with identical postgrestab — must succeed without FK violation.
+        ok, msg = self._run_with_files(files)
+
+        self.assertTrue(ok, f"Re-sync failed unexpectedly: {msg}")
+        db.session.refresh(self.cluster)
+        self.assertEqual(self.cluster.status, ClusterStatus.ACTIVE.value)
+
+        # Instance must still exist with the SAME primary key.
+        instance_after = db.session.get(PgInstance, original_pk)
+        self.assertIsNotNone(
+            instance_after,
+            "PgInstance was deleted during re-sync — would break DatabaseAsset FK ref",
+        )
+        self.assertEqual(instance_after.id, original_pk)
+
+        # DatabaseAsset FK must still be intact.
+        db.session.refresh(asset)
+        self.assertEqual(asset.instance_id, original_pk)
+        self.assertIsNotNone(asset.instance)
+
+    def test_resync_keeps_stale_instance_with_assets(self) -> None:
+        """If an instance disappears from postgrestab but has DatabaseAsset rows
+        referencing it, the instance must be retained (not deleted) and the sync
+        must still succeed with ACTIVE status.
+        """
+        files_v1 = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: (
+                "node1.example.com:5432:main:/data\n"
+                "node1.example.com:5433:secondary:/data2\n"
+            ),
+        }
+        ok, _ = self._run_with_files(files_v1)
+        self.assertTrue(ok)
+
+        # Register an asset against the port-5433 instance.
+        inst_5433 = PgInstance.query.filter_by(
+            cluster_id=self.cluster.id, port=5433
+        ).one()
+        asset = DatabaseAsset(name="secondary-db", instance_id=inst_5433.id)
+        db.session.add(asset)
+        db.session.commit()
+        stale_pk = inst_5433.id
+
+        # Second sync: port-5433 is gone from postgrestab.
+        files_v2 = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: "node1.example.com:5432:main:/data\n",
+        }
+        ok, msg = self._run_with_files(files_v2)
+
+        self.assertTrue(ok, f"Re-sync failed unexpectedly: {msg}")
+        db.session.refresh(self.cluster)
+        self.assertEqual(self.cluster.status, ClusterStatus.ACTIVE.value)
+
+        # Stale instance must still be present.
+        stale_inst = db.session.get(PgInstance, stale_pk)
+        self.assertIsNotNone(
+            stale_inst,
+            "Stale referenced instance was incorrectly deleted",
+        )
+
+        # Both instances still in the table (1 active + 1 stale-kept).
+        self.assertEqual(
+            PgInstance.query.filter_by(cluster_id=self.cluster.id).count(), 2
+        )
+
+    def test_resync_removes_stale_unreferenced_instance(self) -> None:
+        """An instance that disappears from postgrestab and has NO referencing
+        assets or requests must be deleted on the next sync.
+        """
+        files_v1 = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: (
+                "node1.example.com:5432:main:/data\n"
+                "node1.example.com:5433:secondary:/data2\n"
+            ),
+        }
+        ok, _ = self._run_with_files(files_v1)
+        self.assertTrue(ok)
+        self.assertEqual(
+            PgInstance.query.filter_by(cluster_id=self.cluster.id).count(), 2
+        )
+
+        # No assets — port-5433 row should be cleaned up.
+        files_v2 = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: "node1.example.com:5432:main:/data\n",
+        }
+        ok, _ = self._run_with_files(files_v2)
+        self.assertTrue(ok)
+
+        remaining = PgInstance.query.filter_by(cluster_id=self.cluster.id).all()
+        self.assertEqual(
+            len(remaining), 1,
+            "Stale unreferenced instance should have been deleted",
+        )
+        self.assertEqual(remaining[0].port, 5432)
+
+    def test_resync_updates_instance_metadata_in_place(self) -> None:
+        """When postgrestab changes instance_name or pgdata_dir for an existing
+        hostname:port, the row is updated in-place — the primary key must not
+        change so that existing FK references remain valid.
+        """
+        files_v1 = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: "node1.example.com:5432:old-name:/old/data\n",
+        }
+        ok, _ = self._run_with_files(files_v1)
+        self.assertTrue(ok)
+
+        original = PgInstance.query.filter_by(cluster_id=self.cluster.id).one()
+        original_pk = original.id
+
+        files_v2 = {
+            POSTGRES_INFO: "clustername=dev-cluster\n",
+            POSTGRESTAB: "node1.example.com:5432:new-name:/new/data\n",
+        }
+        ok, _ = self._run_with_files(files_v2)
+        self.assertTrue(ok)
+
+        updated = PgInstance.query.filter_by(cluster_id=self.cluster.id).one()
+        self.assertEqual(
+            updated.id, original_pk,
+            "PK must be unchanged when only metadata changes",
+        )
+        self.assertEqual(updated.instance_name, "new-name")
+        self.assertEqual(updated.pgdata_dir, "/new/data")
 
     def test_missing_postgres_info_file(self) -> None:
         """If postgres.info is absent on all nodes, sync fails with an error."""
