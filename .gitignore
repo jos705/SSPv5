@@ -9,4 +9,6 @@ instance/
 .pytest_cache/
 htmlcov/
 coverage.xml
+*.un~
+prompt.txt
 
