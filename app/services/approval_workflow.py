@@ -61,6 +61,7 @@ class ApprovalWorkflowService:
         self,
         instance: PgInstance,
         database_name: str,
+        reason: str | None = None,
     ) -> tuple[bool, str, DatabaseRequest | DatabaseAsset]:
         """
         Submit a request to create *database_name* on *instance*.
@@ -104,6 +105,7 @@ class ApprovalWorkflowService:
             instance_id=instance.id,
             team_id=team.id,
             requested_by_id=self.acting_user.id,
+            reason=reason or None,
         )
         db.session.add(req)
         db.session.commit()
@@ -116,6 +118,7 @@ class ApprovalWorkflowService:
     def submit_delete(
         self,
         asset: DatabaseAsset,
+        reason: str | None = None,
     ) -> tuple[bool, str, DatabaseRequest | DatabaseAsset]:
         """
         Submit a request to delete *asset*.
@@ -161,6 +164,7 @@ class ApprovalWorkflowService:
             team_id=team.id,
             database_asset_id=asset.id,
             requested_by_id=self.acting_user.id,
+            reason=reason or None,
         )
         db.session.add(req)
         db.session.commit()

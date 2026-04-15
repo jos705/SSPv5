@@ -11,14 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app import create_app
 from app.extensions import db
 from app.models import Team, User, UserRole
-
-
-class TestConfig:
-    SECRET_KEY = "test-secret"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    TESTING = True
-    WTF_CSRF_ENABLED = False
+from tests.conftest import TestConfig
 
 
 class Phase1SmokeTests(unittest.TestCase):

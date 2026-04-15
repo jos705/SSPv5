@@ -88,7 +88,11 @@ def create_database():
 
     svc = ApprovalWorkflowService(current_user)
     try:
-        executed, message, _ = svc.submit_create(instance, form.database_name.data.strip())
+        executed, message, _ = svc.submit_create(
+            instance,
+            form.database_name.data.strip(),
+            reason=(form.reason.data or "").strip() or None,
+        )
     except WorkflowError as e:
         flash(str(e), "danger")
         return redirect(url_for("databases.dashboard"))

@@ -322,6 +322,7 @@ class DatabaseRequest(db.Model):
     reviewed_by_id = db.Column(
         db.Integer, db.ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
+    reason = db.Column(db.Text, nullable=True)
     review_note = db.Column(db.Text, nullable=True)
     operation_output = db.Column(db.Text, nullable=True)
     requested_at = db.Column(db.DateTime(timezone=True), server_default=db.func.now(), nullable=False)

@@ -17,6 +17,7 @@
             <th>Instance</th>
             <th>Team</th>
             <th>Requested by</th>
+            <th>Reason</th>
             <th>Submitted</th>
             <th class="text-end">Actions</th>
           </tr>
@@ -36,6 +37,7 @@
               <td class="small font-monospace text-body-secondary">{{ req.instance.hostname }}:{{ req.instance.port }}</td>
               <td>{{ req.team.name if req.team else '—' }}</td>
               <td>{{ req.requested_by.username if req.requested_by else '—' }}</td>
+              <td class="small text-body-secondary">{{ req.reason if req.reason else '—' }}</td>
               <td class="small text-body-secondary">{{ req.requested_at.strftime('%Y-%m-%d %H:%M') }}</td>
               <td class="text-end">
                 <a href="{{ url_for('admin.request_detail', req_id=req.id) }}" class="btn btn-sm btn-outline-secondary">Review</a>
@@ -43,7 +45,7 @@
             </tr>
           {% else %}
             <tr>
-              <td colspan="8" class="text-center text-body-secondary py-4">No pending requests.</td>
+              <td colspan="9" class="text-center text-body-secondary py-4">No pending requests.</td>
             </tr>
           {% endfor %}
         </tbody>

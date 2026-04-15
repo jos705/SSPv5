@@ -69,6 +69,10 @@
         <dd class="col-sm-7">{{ req.requested_by.username if req.requested_by else '—' }}</dd>
         <dt class="col-sm-5">Submitted</dt>
         <dd class="col-sm-7">{{ req.requested_at.strftime('%Y-%m-%d %H:%M') }}</dd>
+        {% if req.reason %}
+          <dt class="col-sm-5">Reason</dt>
+          <dd class="col-sm-7">{{ req.reason }}</dd>
+        {% endif %}
         {% if req.reviewed_by %}
           <dt class="col-sm-5">Reviewed by</dt>
           <dd class="col-sm-7">{{ req.reviewed_by.username }}</dd>
