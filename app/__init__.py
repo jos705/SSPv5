@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import click
+import logging
+import logging.config
 from flask import Flask, render_template
 from sqlalchemy import func, or_
 
@@ -16,12 +18,38 @@ def create_app(config_object: type[Config] = Config) -> Flask:
     app = Flask(__name__)
     app.config.from_object(config_object)
 
+    _configure_logging(app)
     _init_extensions(app)
     _register_blueprints(app)
     _register_error_handlers(app)
     _register_cli_commands(app)
 
     return app
+
+
+def _configure_logging(app: Flask) -> None:
+    """Configure application-wide logging with a structured format."""
+    log_level_name = app.config.get("LOG_LEVEL", "INFO")
+    log_level = getattr(logging, log_level_name.upper(), logging.INFO)
+
+    fmt = "%(asctime)s [%(levelname)-8s] %(name)s: %(message)s"
+    datefmt = "%Y-%m-%dT%H:%M:%S"
+
+    # Only configure if not already configured (avoids double-formatting in tests)
+    if not logging.root.handlers:
+        logging.basicConfig(level=log_level, format=fmt, datefmt=datefmt)
+    else:
+        logging.root.setLevel(log_level)
+        for handler in logging.root.handlers:
+            handler.setFormatter(logging.Formatter(fmt, datefmt=datefmt))
+
+    # Suppress noisy third-party loggers
+    logging.getLogger("paramiko.transport").setLevel(logging.WARNING)
+    logging.getLogger("paramiko.hostkeys").setLevel(logging.WARNING)
+    logging.getLogger("werkzeug").setLevel(logging.WARNING)
+
+    app.logger.setLevel(log_level)
+    app.logger.info("Logging configured — level=%s", log_level_name.upper())
 
 
 def _init_extensions(app: Flask) -> None:

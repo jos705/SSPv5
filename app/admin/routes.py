@@ -10,22 +10,33 @@ from ..decorators import admin_required
 from ..extensions import db
 from ..models import (
     Cluster, ClusterStatus, DatabaseAsset, DatabaseProvenance, DatabaseRequest,
-    DbAssetStatus, Node, PgInstance, RequestStatus, Team, TeamClusterPermission, User, UserRole,
+    DbAssetStatus, Node, OperationLog, OperationStatus, PgInstance, RequestStatus,
+    Team, TeamClusterPermission, User, UserRole,
 )
 
 
 @bp.route("/")
 @admin_required
 def dashboard():
+    recent_ops = (
+        OperationLog.query
+        .order_by(OperationLog.created_at.desc())
+        .limit(10)
+        .all()
+    )
     return render_template(
         "admin/dashboard.html",
         user_count=User.query.count(),
         team_count=Team.query.count(),
         admin_count=User.query.filter_by(role=UserRole.ADMIN.value).count(),
         cluster_count=Cluster.query.count(),
+        active_db_count=DatabaseAsset.query.filter_by(status=DbAssetStatus.ACTIVE.value).count(),
         pending_requests_count=DatabaseRequest.query.filter_by(
             status=RequestStatus.PENDING.value
         ).count(),
+        total_ops=OperationLog.query.count(),
+        failed_ops=OperationLog.query.filter_by(status=OperationStatus.FAILURE.value).count(),
+        recent_ops=recent_ops,
     )
 
 
@@ -486,4 +497,27 @@ def reject_request(req_id: int):
     except WorkflowError as e:
         flash(str(e), "danger")
     return redirect(url_for("admin.requests_queue"))
+
+
+# ---------------------------------------------------------------------------
+# Operation logs
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/operations")
+@admin_required
+def operations():
+    status_filter = request.args.get("status", "").strip().lower()
+    page = request.args.get("page", 1, type=int)
+
+    q = OperationLog.query
+    if status_filter in (OperationStatus.SUCCESS.value, OperationStatus.FAILURE.value):
+        q = q.filter_by(status=status_filter)
+
+    logs = q.order_by(OperationLog.created_at.desc()).paginate(page=page, per_page=25, error_out=False)
+    return render_template(
+        "admin/operations.html",
+        logs=logs,
+        status_filter=status_filter,
+    )
 

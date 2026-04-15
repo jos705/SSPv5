@@ -47,21 +47,45 @@
       </div>
     </div>
   {% else %}
-    <div class="row g-3">
-      <div class="col-md-4">
-        <div class="card h-100">
-          <div class="card-body">
-            <h2 class="h5">Team</h2>
-            <p class="text-body-secondary mb-0">
-              {% if current_user.team %}
-                You are assigned to <strong>{{ current_user.team.name }}</strong>.
-              {% else %}
-                No team assignment yet. Contact an admin to be assigned.
-              {% endif %}
-            </p>
+    {# --- Team stat cards --- #}
+    {% if current_user.team %}
+      <div class="row g-3 mb-4">
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body py-3">
+              <div class="text-body-secondary small">Team</div>
+              <div class="fw-semibold">{{ current_user.team.name }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card stat-card--success h-100">
+            <div class="card-body py-3">
+              <div class="text-body-secondary small">Active databases</div>
+              <div class="fs-3 fw-semibold">{{ db_count }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card {% if pending_count > 0 %}stat-card--warning{% endif %} h-100">
+            <div class="card-body py-3">
+              <div class="text-body-secondary small">Pending requests</div>
+              <div class="fs-3 fw-semibold">{{ pending_count }}</div>
+            </div>
+          </div>
+        </div>
+        <div class="col-6 col-md-3">
+          <div class="card stat-card h-100">
+            <div class="card-body py-3">
+              <div class="text-body-secondary small">Members</div>
+              <div class="fs-3 fw-semibold">{{ current_user.team.users | length }}</div>
+            </div>
           </div>
         </div>
       </div>
+    {% endif %}
+
+    <div class="row g-3 mb-4">
       <div class="col-md-4">
         <div class="card h-100">
           <div class="card-body">
@@ -80,11 +104,73 @@
             <p class="text-body-secondary">
               Track the status of your create/delete requests.
             </p>
+            {% if pending_count > 0 %}
+              <span class="badge text-bg-warning text-dark me-1">{{ pending_count }} pending</span>
+            {% endif %}
             <a href="{{ url_for('databases.my_requests') }}" class="btn btn-outline-primary">My requests</a>
           </div>
         </div>
       </div>
+      <div class="col-md-4">
+        <div class="card h-100">
+          <div class="card-body">
+            <h2 class="h5">Account</h2>
+            <p class="text-body-secondary">
+              Change your password or view your profile.
+            </p>
+            <a href="{{ url_for('auth.change_password') }}" class="btn btn-outline-secondary">Change password</a>
+          </div>
+        </div>
+      </div>
     </div>
+
+    {# --- Recent team databases --- #}
+    {% if recent_dbs %}
+      <h2 class="h5 mb-2">Recent databases</h2>
+      <div class="card">
+        <div class="table-responsive">
+          <table class="table table-sm table-striped mb-0 align-middle">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Instance</th>
+                <th>Provenance</th>
+                <th>Status</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for db in recent_dbs %}
+                <tr>
+                  <td class="fw-semibold font-monospace">{{ db.name }}</td>
+                  <td class="small text-body-secondary font-monospace">{{ db.instance.hostname }}:{{ db.instance.port }}</td>
+                  <td>
+                    {% if db.provenance == 'dba' %}
+                      <span class="badge text-bg-warning text-dark">DBA</span>
+                    {% else %}
+                      <span class="badge text-bg-secondary">Team</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if db.status == 'active' %}
+                      <span class="badge text-bg-success">Active</span>
+                    {% elif db.status == 'deleting' %}
+                      <span class="badge text-bg-warning text-dark">Pending deletion</span>
+                    {% else %}
+                      <span class="badge text-bg-danger">{{ db.status }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="small text-body-secondary">{{ db.created_at.strftime('%Y-%m-%d') }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="card-footer text-end">
+          <a href="{{ url_for('databases.dashboard') }}" class="small">Manage all databases &rarr;</a>
+        </div>
+      </div>
+    {% endif %}
   {% endif %}
 {% endblock %}
 

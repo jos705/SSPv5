@@ -28,6 +28,7 @@ import paramiko
 
 from ..extensions import db
 from ..models import OperationLog, OperationStatus
+from .ssh_client import open_ssh_client
 
 if TYPE_CHECKING:
     from ..models import DatabaseAsset, DatabaseRequest, PgInstance, User
@@ -161,21 +162,14 @@ class ProvisioningService:
         if not self.cluster.nodes:
             raise ProvisioningError("Cluster has no registered nodes.")
 
-        client = paramiko.SSHClient()
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.load_system_host_keys()
-
         target_node = self.cluster.nodes[0]
-        connect_kwargs: dict = {
-            "hostname": target_node.hostname,
-            "username": self.cluster.ssh_user,
-            "timeout": SSH_TIMEOUT,
-        }
-        if self.cluster.ssh_key_path:
-            connect_kwargs["key_filename"] = self.cluster.ssh_key_path
-
+        client = open_ssh_client(
+            hostname=target_node.hostname,
+            username=self.cluster.ssh_user,
+            key_path=self.cluster.ssh_key_path or None,
+            timeout=SSH_TIMEOUT,
+        )
         try:
-            client.connect(**connect_kwargs)
             stdin, stdout, stderr = client.exec_command(command, timeout=SSH_TIMEOUT)
             exit_code = stdout.channel.recv_exit_status()
             out = stdout.read().decode("utf-8", errors="replace")

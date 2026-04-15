@@ -36,6 +36,7 @@ import paramiko
 
 from ..extensions import db
 from ..models import ClusterStatus, PgInstance
+from .ssh_client import open_ssh_client
 
 if TYPE_CHECKING:
     from ..models import Cluster
@@ -164,26 +165,12 @@ class ClusterDiscoveryService:
 
     def _open_client(self, hostname: str) -> paramiko.SSHClient:
         """Return an open, authenticated SSHClient for *hostname*."""
-        client = paramiko.SSHClient()
-        # NOTE: AutoAddPolicy is used for ease of initial deployment.
-        # Phase 4 will replace this with RejectPolicy + pre-seeded known_hosts.
-        client.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        client.load_system_host_keys()
-
-        connect_kwargs: dict = {
-            "hostname": hostname,
-            "username": self.cluster.ssh_user,
-            "timeout": SSH_TIMEOUT,
-        }
-        if self.cluster.ssh_key_path:
-            connect_kwargs["key_filename"] = self.cluster.ssh_key_path
-
-        try:
-            client.connect(**connect_kwargs)
-        except Exception:
-            client.close()
-            raise
-        return client
+        return open_ssh_client(
+            hostname=hostname,
+            username=self.cluster.ssh_user,
+            key_path=self.cluster.ssh_key_path or None,
+            timeout=SSH_TIMEOUT,
+        )
 
     def _read_remote_file(self, client: paramiko.SSHClient, path: str) -> str:
         """Read the text content of *path* on the remote host via SFTP."""

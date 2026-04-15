@@ -24,10 +24,13 @@
         <div class="d-flex align-items-center gap-2">
           {% if current_user.is_authenticated %}
             <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('main.dashboard') }}">Dashboard</a>
+            {% if not current_user.is_admin %}
+              <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('databases.dashboard') }}">Databases</a>
+            {% endif %}
             {% if current_user.is_admin %}
               <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('admin.dashboard') }}">Admin</a>
             {% endif %}
-            <a class="btn btn-sm btn-outline-secondary" href="{{ url_for('auth.change_password') }}">Password</a>
+            <span class="badge text-bg-secondary d-none d-md-inline">{{ current_user.username }}</span>
             <form method="post" action="{{ url_for('auth.logout') }}" class="d-inline">
               <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
               <button type="submit" class="btn btn-sm btn-outline-danger">Sign out</button>
@@ -35,7 +38,7 @@
           {% else %}
             <a class="btn btn-sm btn-outline-primary" href="{{ url_for('auth.login') }}">Sign in</a>
           {% endif %}
-          <button id="themeToggle" type="button" class="btn btn-sm btn-primary">Toggle theme</button>
+          <button id="themeToggle" type="button" class="btn btn-sm btn-outline-secondary">Dark mode</button>
         </div>
       </div>
     </nav>
