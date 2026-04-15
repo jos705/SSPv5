@@ -42,6 +42,13 @@
               {{ form.submit(class_="btn btn-primary w-100") }}
             </div>
           </div>
+          <div class="mt-3">
+            {{ form.reason.label(class_="form-label") }}
+            {{ form.reason(class_="form-control") }}
+            {% for error in form.reason.errors %}
+              <div class="text-danger small">{{ error }}</div>
+            {% endfor %}
+          </div>
           <p class="form-text mt-2 mb-0">
             If your team needs approval for this cluster, a request will be created for admin review.
           </p>
