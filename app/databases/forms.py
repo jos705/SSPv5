@@ -3,8 +3,8 @@ from __future__ import annotations
 import re
 
 from flask_wtf import FlaskForm
-from wtforms import SelectField, StringField, SubmitField
-from wtforms.validators import DataRequired, Length, Regexp, ValidationError
+from wtforms import SelectField, StringField, SubmitField, TextAreaField
+from wtforms.validators import DataRequired, Length, Optional, Regexp, ValidationError
 
 from ..models import PgInstance
 
@@ -23,6 +23,11 @@ class CreateDatabaseForm(FlaskForm):
                 message="Use only letters, digits, and underscores. Must start with a letter or underscore.",
             ),
         ],
+    )
+    reason = TextAreaField(
+        "Reason",
+        validators=[Optional(), Length(max=500)],
+        render_kw={"rows": 2, "placeholder": "Briefly describe why you need this database (optional)"},
     )
     submit = SubmitField("Create database")
 
