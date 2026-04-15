@@ -27,16 +27,12 @@ from app.models import (
 from app.services.cluster_discovery import ClusterDiscoveryService, DiscoveryError
 
 
-# ---------------------------------------------------------------------------
-# Shared test config
-# ---------------------------------------------------------------------------
+from tests.conftest import TestConfig
 
-class TestConfig:
-    SECRET_KEY = "test-secret"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    TESTING = True
-    WTF_CSRF_ENABLED = False
+
+# ---------------------------------------------------------------------------
+# Shared test config — imported from tests/conftest.py
+# ---------------------------------------------------------------------------
 
 
 # ---------------------------------------------------------------------------

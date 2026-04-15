@@ -26,12 +26,7 @@ from app.services.approval_workflow import ApprovalWorkflowService, WorkflowErro
 from app.services.provisioning import ProvisioningError, ProvisioningService
 
 
-class TestConfig:
-    SECRET_KEY = "test-secret"
-    SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
-    SQLALCHEMY_TRACK_MODIFICATIONS = False
-    TESTING = True
-    WTF_CSRF_ENABLED = False
+from tests.conftest import TestConfig
 
 
 # ---------------------------------------------------------------------------
