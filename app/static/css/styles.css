@@ -2,12 +2,51 @@ body {
   min-height: 100vh;
 }
 
+/* Stat cards with colour-coded left borders */
 .stat-card {
   border-left: 4px solid var(--bs-primary);
+  transition: box-shadow 0.15s ease;
+}
+.stat-card:hover {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+.stat-card--success {
+  border-left-color: var(--bs-success);
+}
+.stat-card--warning {
+  border-left-color: var(--bs-warning);
+}
+.stat-card--danger {
+  border-left-color: var(--bs-danger);
 }
 
+/* Tables */
 .table td,
 .table th {
   vertical-align: middle;
+}
+
+/* Navbar brand polish */
+.navbar-brand {
+  letter-spacing: -0.02em;
+}
+
+/* Operation output in tables */
+code {
+  font-size: 0.8em;
+}
+
+/* Card footer links */
+.card-footer a {
+  text-decoration: none;
+}
+.card-footer a:hover {
+  text-decoration: underline;
+}
+
+/* Badge spacing in nav */
+.navbar .badge {
+  font-weight: 400;
+  opacity: 0.85;
 }
 

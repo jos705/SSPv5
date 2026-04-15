@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% block title %}Operation Logs - Admin{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Operation logs</h1>
+    <div class="d-flex gap-2">
+      <a href="{{ url_for('admin.operations') }}"
+         class="btn btn-sm {% if not status_filter %}btn-primary{% else %}btn-outline-secondary{% endif %}">
+        All
+      </a>
+      <a href="{{ url_for('admin.operations', status='success') }}"
+         class="btn btn-sm {% if status_filter == 'success' %}btn-success{% else %}btn-outline-success{% endif %}">
+        Success
+      </a>
+      <a href="{{ url_for('admin.operations', status='failure') }}"
+         class="btn btn-sm {% if status_filter == 'failure' %}btn-danger{% else %}btn-outline-danger{% endif %}">
+        Failed
+      </a>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-sm table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Action</th>
+            <th>Status</th>
+            <th>Database</th>
+            <th>Instance</th>
+            <th>Triggered by</th>
+            <th>When</th>
+            <th>Output (preview)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for op in logs.items %}
+            <tr>
+              <td class="text-body-secondary">{{ op.id }}</td>
+              <td class="font-monospace small">{{ op.action.replace('_', ' ').title() }}</td>
+              <td>
+                {% if op.status == 'success' %}
+                  <span class="badge text-bg-success">Success</span>
+                {% else %}
+                  <span class="badge text-bg-danger">Failed</span>
+                {% endif %}
+              </td>
+              <td class="font-monospace small fw-semibold">
+                {% if op.database_asset %}
+                  {{ op.database_asset.name }}
+                {% elif op.database_request %}
+                  {{ op.database_request.database_name }}
+                {% else %}—{% endif %}
+              </td>
+              <td class="font-monospace small text-body-secondary">
+                {% if op.database_asset %}
+                  {{ op.database_asset.instance.hostname }}:{{ op.database_asset.instance.port }}
+                {% elif op.database_request %}
+                  {{ op.database_request.instance.hostname }}:{{ op.database_request.instance.port }}
+                {% else %}—{% endif %}
+              </td>
+              <td class="text-body-secondary small">{{ op.triggered_by.username if op.triggered_by else '—' }}</td>
+              <td class="text-body-secondary small text-nowrap">{{ op.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+              <td class="text-body-secondary small" style="max-width:250px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                <code>{{ (op.output or '—')[:120] }}</code>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="8" class="text-center text-body-secondary py-4">No operation logs found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+    {# Pagination #}
+    {% if logs.pages > 1 %}
+      <div class="card-footer d-flex justify-content-between align-items-center">
+        <small class="text-body-secondary">
+          Showing {{ logs.first }} – {{ logs.last }} of {{ logs.total }}
+        </small>
+        <nav>
+          <ul class="pagination pagination-sm mb-0">
+            <li class="page-item {% if not logs.has_prev %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('admin.operations', page=logs.prev_num, status=status_filter) }}">‹</a>
+            </li>
+            {% for p in logs.iter_pages(left_edge=1, right_edge=1, left_current=2, right_current=2) %}
+              {% if p %}
+                <li class="page-item {% if p == logs.page %}active{% endif %}">
+                  <a class="page-link" href="{{ url_for('admin.operations', page=p, status=status_filter) }}">{{ p }}</a>
+                </li>
+              {% else %}
+                <li class="page-item disabled"><span class="page-link">…</span></li>
+              {% endif %}
+            {% endfor %}
+            <li class="page-item {% if not logs.has_next %}disabled{% endif %}">
+              <a class="page-link" href="{{ url_for('admin.operations', page=logs.next_num, status=status_filter) }}">›</a>
+            </li>
+          </ul>
+        </nav>
+      </div>
+    {% endif %}
+  </div>
+{% endblock %}
