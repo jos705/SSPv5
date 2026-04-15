@@ -1,0 +1,95 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Admin{% endblock %}
+{% block content %}
+  <div class="row">
+    <div class="col-lg-8">
+      <h1 class="h3 mb-3">{{ title }}</h1>
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {{ form.hidden_tag() }}
+
+            <h6 class="text-body-secondary text-uppercase small fw-semibold mb-3">Cluster details</h6>
+
+            <div class="mb-3">
+              {{ form.name.label(class_="form-label") }}
+              {{ form.name(class_="form-control") }}
+              {% for error in form.name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.load_balancer.label(class_="form-label") }}
+              {{ form.load_balancer(class_="form-control", placeholder="e.g. pg-lb.example.com or 192.168.1.10") }}
+              {% for error in form.load_balancer.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.description.label(class_="form-label") }}
+              {{ form.description(class_="form-control", rows=2) }}
+              {% for error in form.description.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <hr class="my-4">
+            <h6 class="text-body-secondary text-uppercase small fw-semibold mb-3">Node hostnames</h6>
+            <p class="text-body-secondary small mb-3">Enter the hostnames or IP addresses of the cluster nodes (minimum 1, up to 3).</p>
+
+            <div class="mb-3">
+              {{ form.node1.label(class_="form-label") }}
+              {{ form.node1(class_="form-control", placeholder="e.g. pg-node1.example.com") }}
+              {% for error in form.node1.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.node2.label(class_="form-label") }}
+              {{ form.node2(class_="form-control", placeholder="e.g. pg-node2.example.com") }}
+              {% for error in form.node2.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.node3.label(class_="form-label") }}
+              {{ form.node3(class_="form-control", placeholder="e.g. pg-node3.example.com (optional)") }}
+              {% for error in form.node3.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <hr class="my-4">
+            <h6 class="text-body-secondary text-uppercase small fw-semibold mb-3">SSH settings</h6>
+
+            <div class="mb-3">
+              {{ form.ssh_user.label(class_="form-label") }}
+              {{ form.ssh_user(class_="form-control") }}
+              {% for error in form.ssh_user.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="mb-3">
+              {{ form.ssh_key_path.label(class_="form-label") }}
+              {{ form.ssh_key_path(class_="form-control", placeholder="~/.ssh/id_ed25519") }}
+              <div class="form-text">{{ form.ssh_key_path.description }}</div>
+              {% for error in form.ssh_key_path.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+
+            <div class="d-flex gap-2 mt-4">
+              {{ form.submit(class_="btn btn-primary") }}
+              <a href="{{ url_for('admin.clusters') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

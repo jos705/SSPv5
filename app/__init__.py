@@ -6,7 +6,7 @@ from sqlalchemy import func, or_
 
 from .config import Config
 from .extensions import csrf, db, login_manager, migrate
-from .models import User, UserRole
+from .models import Cluster, Node, PgInstance, TeamClusterPermission, User, UserRole  # noqa: F401
 
 
 def create_app(config_object: type[Config] = Config) -> Flask:
