@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}Register DBA Database - Admin{% endblock %}
+{% block content %}
+  <div class="row">
+    <div class="col-lg-7">
+      <h1 class="h3 mb-3">Register DBA database</h1>
+      <p class="text-body-secondary mb-4">
+        Register a database that was created externally by a DBA so it appears in the team's
+        inventory. Deletion of DBA-registered databases always requires admin approval.
+      </p>
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="mb-3">
+              <label class="form-label">Instance</label>
+              <select name="instance_id" class="form-select" required>
+                <option value="">Select instance…</option>
+                {% for inst in instances %}
+                  <option value="{{ inst.id }}">{{ inst.instance_name }}  ({{ inst.hostname }}:{{ inst.port }}) — {{ inst.cluster.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Database name</label>
+              <input type="text" name="database_name" class="form-control" required
+                     placeholder="e.g. legacy_app_db" maxlength="63">
+            </div>
+            <div class="mb-3">
+              <label class="form-label">Assign to team</label>
+              <select name="team_id" class="form-select" required>
+                <option value="">Select team…</option>
+                {% for team in teams %}
+                  <option value="{{ team.id }}">{{ team.name }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="d-flex gap-2">
+              <button type="submit" class="btn btn-primary">Register</button>
+              <a href="{{ url_for('admin.databases') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}

@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block title %}My Databases{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+      <h1 class="h3 mb-1">Databases</h1>
+      <p class="text-body-secondary mb-0">Manage your team's PostgreSQL databases.</p>
+    </div>
+    <a href="{{ url_for('databases.my_requests') }}" class="btn btn-outline-secondary btn-sm">Request history</a>
+  </div>
+
+  {% if pending_requests %}
+    <div class="alert alert-info d-flex align-items-center gap-2 mb-4">
+      <strong>{{ pending_requests|length }} pending request{{ 's' if pending_requests|length != 1 }}.</strong>
+      Waiting for admin approval. <a href="{{ url_for('databases.my_requests') }}">View details</a>
+    </div>
+  {% endif %}
+
+  {# Create database form #}
+  {% if has_instances %}
+    <h2 class="h5 mb-2">Create database</h2>
+    <div class="card mb-4">
+      <div class="card-body">
+        <form method="post" action="{{ url_for('databases.create_database') }}" novalidate>
+          {{ form.hidden_tag() }}
+          <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+              {{ form.instance_id.label(class_="form-label") }}
+              {{ form.instance_id(class_="form-select") }}
+              {% for error in form.instance_id.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.database_name.label(class_="form-label") }}
+              {{ form.database_name(class_="form-control", placeholder="e.g. myapp_db") }}
+              {% for error in form.database_name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="col-md-4">
+              {{ form.submit(class_="btn btn-primary w-100") }}
+            </div>
+          </div>
+          <p class="form-text mt-2 mb-0">
+            If your team needs approval for this cluster, a request will be created for admin review.
+          </p>
+        </form>
+      </div>
+    </div>
+  {% else %}
+    <div class="alert alert-warning mb-4">
+      Your team does not have access to any cluster instances yet. Ask an admin to grant cluster access.
+    </div>
+  {% endif %}
+
+  {# Database list #}
+  <h2 class="h5 mb-2">Active databases
+    <span class="badge text-bg-secondary ms-1">{{ assets|length }}</span>
+  </h2>
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Instance</th>
+            <th>Cluster</th>
+            <th>Provenance</th>
+            <th>Status</th>
+            <th>Created</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for asset in assets %}
+            <tr>
+              <td class="fw-semibold font-monospace">{{ asset.name }}</td>
+              <td class="small font-monospace text-body-secondary">{{ asset.instance.hostname }}:{{ asset.instance.port }}</td>
+              <td>{{ asset.instance.cluster.name }}</td>
+              <td>
+                {% if asset.provenance == 'dba' %}
+                  <span class="badge text-bg-warning text-dark">DBA</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Team</span>
+                {% endif %}
+              </td>
+              <td>
+                {% if asset.status == 'active' %}
+                  <span class="badge text-bg-success">Active</span>
+                {% elif asset.status == 'deleting' %}
+                  <span class="badge text-bg-warning text-dark">Pending deletion</span>
+                {% else %}
+                  <span class="badge text-bg-danger">{{ asset.status|capitalize }}</span>
+                {% endif %}
+              </td>
+              <td class="text-body-secondary small">{{ asset.created_at.strftime('%Y-%m-%d') }}</td>
+              <td class="text-end">
+                {% if asset.status == 'active' %}
+                  <form method="post" action="{{ url_for('databases.delete_database', asset_id=asset.id) }}" class="d-inline">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                            onclick="return confirm('Delete database {{ asset.name }}?');">Delete</button>
+                  </form>
+                {% else %}
+                  <span class="text-body-secondary small">—</span>
+                {% endif %}
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-body-secondary py-4">No databases yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

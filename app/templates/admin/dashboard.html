@@ -41,12 +41,29 @@
         </div>
       </div>
     </div>
+    <div class="col-md-4">
+      <div class="card stat-card h-100">
+        <div class="card-body">
+          <div class="text-body-secondary small">Pending requests</div>
+          <div class="display-6">{{ pending_requests_count }}</div>
+        </div>
+      </div>
+    </div>
   </div>
 
-  <div class="d-flex gap-2">
+  {% if pending_requests_count > 0 %}
+    <div class="alert alert-warning d-flex align-items-center gap-2 mb-4">
+      <strong>{{ pending_requests_count }} pending request{{ 's' if pending_requests_count != 1 }}</strong> awaiting approval.
+      <a href="{{ url_for('admin.requests_queue') }}">Review now</a>
+    </div>
+  {% endif %}
+
+  <div class="d-flex gap-2 flex-wrap">
     <a href="{{ url_for('admin.teams') }}" class="btn btn-primary">Manage teams</a>
     <a href="{{ url_for('admin.users') }}" class="btn btn-outline-primary">Manage users</a>
     <a href="{{ url_for('admin.clusters') }}" class="btn btn-outline-primary">Manage clusters</a>
+    <a href="{{ url_for('admin.databases') }}" class="btn btn-outline-primary">Databases</a>
+    <a href="{{ url_for('admin.requests_queue') }}" class="btn btn-outline-primary">Requests</a>
   </div>
 {% endblock %}
 
