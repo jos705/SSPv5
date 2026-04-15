@@ -11,7 +11,7 @@ if str(PROJECT_ROOT) not in sys.path:
 from app import create_app
 from app.extensions import db
 from app.models import Team, User, UserRole
-from tests.conftest import TestConfig
+from tests.conftest import TestConfig, safe_drop_all
 
 
 class Phase1SmokeTests(unittest.TestCase):
@@ -43,7 +43,7 @@ class Phase1SmokeTests(unittest.TestCase):
 
     def tearDown(self) -> None:
         db.session.remove()
-        db.drop_all()
+        safe_drop_all(db)
         self.app_context.pop()
 
     def test_authentication_rbac_and_admin_crud(self) -> None:

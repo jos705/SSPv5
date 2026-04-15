@@ -27,7 +27,7 @@ from app.models import (
 from app.services.cluster_discovery import ClusterDiscoveryService, DiscoveryError
 
 
-from tests.conftest import TestConfig
+from tests.conftest import TestConfig, safe_drop_all
 
 
 # ---------------------------------------------------------------------------
@@ -98,7 +98,7 @@ class TestClusterDiscoveryService(unittest.TestCase):
 
     def tearDown(self) -> None:
         db.session.remove()
-        db.drop_all()
+        safe_drop_all(db)
         self.ctx.pop()
 
     # --- helpers ---
@@ -450,7 +450,7 @@ class TestClusterAdminUI(unittest.TestCase):
 
     def tearDown(self) -> None:
         db.session.remove()
-        db.drop_all()
+        safe_drop_all(db)
         self.ctx.pop()
 
     def test_cluster_list_page_loads(self) -> None:

@@ -23,3 +23,19 @@ class TestConfig:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     TESTING = True
     WTF_CSRF_ENABLED = False
+
+
+def safe_drop_all(db) -> None:
+    """
+    Drop all tables — but only when connected to SQLite or a database whose
+    URL contains 'test'.  Raises RuntimeError if the URL looks like a
+    production database, preventing accidental data loss.
+    """
+    uri = db.engine.url.render_as_string(hide_password=True)
+    is_safe = "sqlite" in uri or "test" in uri
+    if not is_safe:
+        raise RuntimeError(
+            f"safe_drop_all() refused to drop tables on '{uri}'. "
+            "The test database URL must contain 'test' or use SQLite."
+        )
+    db.drop_all()

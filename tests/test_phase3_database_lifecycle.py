@@ -26,7 +26,7 @@ from app.services.approval_workflow import ApprovalWorkflowService, WorkflowErro
 from app.services.provisioning import ProvisioningError, ProvisioningService
 
 
-from tests.conftest import TestConfig
+from tests.conftest import TestConfig, safe_drop_all
 
 
 # ---------------------------------------------------------------------------
@@ -130,7 +130,7 @@ class TestProvisioningService(unittest.TestCase):
 
     def tearDown(self):
         db.session.remove()
-        db.drop_all()
+        safe_drop_all(db)
         self.ctx.pop()
 
     def test_create_database_success(self):
@@ -206,7 +206,7 @@ class TestApprovalWorkflowService(unittest.TestCase):
 
     def tearDown(self):
         db.session.remove()
-        db.drop_all()
+        safe_drop_all(db)
         self.ctx.pop()
 
     # --- submit_create ---
@@ -437,7 +437,7 @@ class TestDatabaseAdminUI(unittest.TestCase):
 
     def tearDown(self):
         db.session.remove()
-        db.drop_all()
+        safe_drop_all(db)
         self.ctx.pop()
 
     def _admin_client(self):
