@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}Teams - Admin{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Teams</h1>
+    <a href="{{ url_for('admin.create_team') }}" class="btn btn-primary">Create team</a>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Description</th>
+            <th>Users</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for team in teams %}
+            <tr>
+              <td>{{ team.name }}</td>
+              <td class="text-body-secondary">{{ team.description or "-" }}</td>
+              <td>{{ team.users|length }}</td>
+              <td class="text-end">
+                <a href="{{ url_for('admin.edit_team', team_id=team.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                <form method="post" action="{{ url_for('admin.delete_team', team_id=team.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger" onclick="return confirm('Delete this team?');">
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="4" class="text-center text-body-secondary py-4">No teams found.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}
+

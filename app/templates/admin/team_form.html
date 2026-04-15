@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - Admin{% endblock %}
+{% block content %}
+  <div class="row">
+    <div class="col-lg-8">
+      <h1 class="h3 mb-3">{{ title }}</h1>
+      <div class="card">
+        <div class="card-body">
+          <form method="post" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.name.label(class_="form-label") }}
+              {{ form.name(class_="form-control") }}
+              {% for error in form.name.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="mb-3">
+              {{ form.description.label(class_="form-label") }}
+              {{ form.description(class_="form-control", rows=3) }}
+              {% for error in form.description.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="d-flex gap-2">
+              {{ form.submit(class_="btn btn-primary") }}
+              <a href="{{ url_for('admin.teams') }}" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+

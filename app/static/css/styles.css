@@ -1,0 +1,13 @@
+body {
+  min-height: 100vh;
+}
+
+.stat-card {
+  border-left: 4px solid var(--bs-primary);
+}
+
+.table td,
+.table th {
+  vertical-align: middle;
+}
+

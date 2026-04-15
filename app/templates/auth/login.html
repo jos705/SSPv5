@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Sign in - DevOps Portal{% endblock %}
+{% block content %}
+  <div class="row justify-content-center">
+    <div class="col-md-6 col-lg-5">
+      <div class="card shadow-sm">
+        <div class="card-body p-4">
+          <h1 class="h4 mb-3">Sign in</h1>
+          <form method="post" novalidate>
+            {{ form.hidden_tag() }}
+            <div class="mb-3">
+              {{ form.email.label(class_="form-label") }}
+              {{ form.email(class_="form-control", placeholder="name@example.com") }}
+              {% for error in form.email.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="mb-3">
+              {{ form.password.label(class_="form-label") }}
+              {{ form.password(class_="form-control") }}
+              {% for error in form.password.errors %}
+                <div class="text-danger small">{{ error }}</div>
+              {% endfor %}
+            </div>
+            <div class="form-check mb-3">
+              {{ form.remember_me(class_="form-check-input") }}
+              {{ form.remember_me.label(class_="form-check-label") }}
+            </div>
+            {{ form.submit(class_="btn btn-primary w-100") }}
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+{% endblock %}
+
