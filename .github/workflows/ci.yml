@@ -30,7 +30,7 @@ jobs:
           # Tests use SQLite in-memory via TestConfig — no real DB needed.
           # Provide a dummy DATABASE_URL so python-dotenv / config.py
           # does not try to load a missing .env file at import time.
-          DATABASE_URL: sqlite:///:memory:
+          DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: ci-test-secret-key
           FLASK_APP: run.py
         run: pytest tests/ -v --tb=short
