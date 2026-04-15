@@ -11,4 +11,5 @@ htmlcov/
 coverage.xml
 *.un~
 prompt.txt
+flask_stderr.txt
 
