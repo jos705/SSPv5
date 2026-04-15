@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}Clusters - Admin{% endblock %}
+{% block content %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Clusters</h1>
+    <a href="{{ url_for('admin.create_cluster') }}" class="btn btn-primary">Register cluster</a>
+  </div>
+
+  <div class="card">
+    <div class="table-responsive">
+      <table class="table table-striped mb-0 align-middle">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Load balancer</th>
+            <th>Nodes</th>
+            <th>Instances</th>
+            <th>Status</th>
+            <th>Last synced</th>
+            <th class="text-end">Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for cluster in clusters %}
+            <tr>
+              <td>
+                <a href="{{ url_for('admin.cluster_detail', cluster_id=cluster.id) }}" class="fw-semibold text-decoration-none">
+                  {{ cluster.name }}
+                </a>
+              </td>
+              <td class="text-body-secondary font-monospace small">{{ cluster.load_balancer }}</td>
+              <td>{{ cluster.nodes|length }}</td>
+              <td>{{ cluster.instances|length }}</td>
+              <td>
+                {% if cluster.status == 'active' %}
+                  <span class="badge text-bg-success">Active</span>
+                {% elif cluster.status == 'error' %}
+                  <span class="badge text-bg-danger">Error</span>
+                {% else %}
+                  <span class="badge text-bg-secondary">Pending</span>
+                {% endif %}
+              </td>
+              <td class="text-body-secondary small">
+                {{ cluster.last_synced_at.strftime('%Y-%m-%d %H:%M') if cluster.last_synced_at else '—' }}
+              </td>
+              <td class="text-end">
+                <a href="{{ url_for('admin.cluster_detail', cluster_id=cluster.id) }}" class="btn btn-sm btn-outline-secondary">View</a>
+                <a href="{{ url_for('admin.edit_cluster', cluster_id=cluster.id) }}" class="btn btn-sm btn-outline-secondary">Edit</a>
+                <form method="post" action="{{ url_for('admin.delete_cluster', cluster_id=cluster.id) }}" class="d-inline">
+                  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn btn-sm btn-outline-danger"
+                          onclick="return confirm('Delete cluster {{ cluster.name }}? This will remove all nodes, instances and permissions.');">
+                    Delete
+                  </button>
+                </form>
+              </td>
+            </tr>
+          {% else %}
+            <tr>
+              <td colspan="7" class="text-center text-body-secondary py-4">No clusters registered yet.</td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+{% endblock %}

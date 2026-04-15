@@ -5,10 +5,10 @@ from flask_login import current_user
 from sqlalchemy import func, or_
 
 from . import bp
-from .forms import TeamForm, UserCreateForm, UserEditForm
+from .forms import ClusterForm, TeamClusterPermissionForm, TeamForm, UserCreateForm, UserEditForm
 from ..decorators import admin_required
 from ..extensions import db
-from ..models import Team, User, UserRole
+from ..models import Cluster, ClusterStatus, Node, TeamClusterPermission, Team, User, UserRole
 
 
 @bp.route("/")
@@ -19,6 +19,7 @@ def dashboard():
         user_count=User.query.count(),
         team_count=Team.query.count(),
         admin_count=User.query.filter_by(role=UserRole.ADMIN.value).count(),
+        cluster_count=Cluster.query.count(),
     )
 
 
@@ -190,4 +191,189 @@ def delete_user(user_id: int):
     db.session.commit()
     flash("User deleted.", "success")
     return redirect(url_for("admin.users"))
+
+
+# ---------------------------------------------------------------------------
+# Cluster management
+# ---------------------------------------------------------------------------
+
+
+@bp.route("/clusters")
+@admin_required
+def clusters():
+    all_clusters = Cluster.query.order_by(Cluster.name.asc()).all()
+    return render_template("admin/clusters.html", clusters=all_clusters)
+
+
+@bp.route("/clusters/new", methods=["GET", "POST"])
+@admin_required
+def create_cluster():
+    form = ClusterForm()
+    if form.validate_on_submit():
+        name = form.name.data.strip()
+        if Cluster.query.filter(func.lower(Cluster.name) == name.lower()).first():
+            flash("A cluster with this name already exists.", "danger")
+            return render_template("admin/cluster_form.html", form=form, title="Register cluster")
+
+        cluster = Cluster(
+            name=name,
+            load_balancer=form.load_balancer.data.strip(),
+            description=form.description.data.strip() if form.description.data else None,
+            ssh_user=form.ssh_user.data.strip(),
+            ssh_key_path=form.ssh_key_path.data.strip() or None,
+            status=ClusterStatus.PENDING.value,
+        )
+        db.session.add(cluster)
+        db.session.flush()  # get cluster.id before adding nodes
+
+        for hostname in form.node_hostnames():
+            db.session.add(Node(cluster_id=cluster.id, hostname=hostname))
+
+        db.session.commit()
+        flash(f"Cluster '{cluster.name}' registered.", "success")
+        return redirect(url_for("admin.cluster_detail", cluster_id=cluster.id))
+
+    return render_template("admin/cluster_form.html", form=form, title="Register cluster")
+
+
+@bp.route("/clusters/<int:cluster_id>")
+@admin_required
+def cluster_detail(cluster_id: int):
+    cluster = Cluster.query.get_or_404(cluster_id)
+    perm_form = TeamClusterPermissionForm()
+    teams_without_perm = (
+        Team.query
+        .filter(~Team.id.in_(
+            db.session.query(TeamClusterPermission.team_id)
+            .filter_by(cluster_id=cluster_id)
+        ))
+        .order_by(Team.name.asc())
+        .all()
+    )
+    perm_form.set_team_choices(teams_without_perm)
+    return render_template(
+        "admin/cluster_detail.html",
+        cluster=cluster,
+        perm_form=perm_form,
+        has_available_teams=bool(teams_without_perm),
+    )
+
+
+@bp.route("/clusters/<int:cluster_id>/edit", methods=["GET", "POST"])
+@admin_required
+def edit_cluster(cluster_id: int):
+    cluster = Cluster.query.get_or_404(cluster_id)
+    form = ClusterForm(obj=cluster)
+
+    if request.method == "GET":
+        # Pre-fill node fields from existing nodes
+        nodes = cluster.nodes
+        if len(nodes) > 0:
+            form.node1.data = nodes[0].hostname
+        if len(nodes) > 1:
+            form.node2.data = nodes[1].hostname
+        if len(nodes) > 2:
+            form.node3.data = nodes[2].hostname
+
+    if form.validate_on_submit():
+        name = form.name.data.strip()
+        if (
+            Cluster.query
+            .filter(Cluster.id != cluster.id)
+            .filter(func.lower(Cluster.name) == name.lower())
+            .first()
+        ):
+            flash("A cluster with this name already exists.", "danger")
+            return render_template(
+                "admin/cluster_form.html", form=form, title=f"Edit {cluster.name}"
+            )
+
+        cluster.name = name
+        cluster.load_balancer = form.load_balancer.data.strip()
+        cluster.description = form.description.data.strip() if form.description.data else None
+        cluster.ssh_user = form.ssh_user.data.strip()
+        cluster.ssh_key_path = form.ssh_key_path.data.strip() or None
+
+        # Replace nodes with whatever the form provides
+        for node in list(cluster.nodes):
+            db.session.delete(node)
+        db.session.flush()
+        for hostname in form.node_hostnames():
+            db.session.add(Node(cluster_id=cluster.id, hostname=hostname))
+
+        db.session.commit()
+        flash("Cluster updated.", "success")
+        return redirect(url_for("admin.cluster_detail", cluster_id=cluster.id))
+
+    return render_template(
+        "admin/cluster_form.html", form=form, title=f"Edit {cluster.name}"
+    )
+
+
+@bp.route("/clusters/<int:cluster_id>/delete", methods=["POST"])
+@admin_required
+def delete_cluster(cluster_id: int):
+    cluster = Cluster.query.get_or_404(cluster_id)
+    db.session.delete(cluster)
+    db.session.commit()
+    flash(f"Cluster '{cluster.name}' deleted.", "success")
+    return redirect(url_for("admin.clusters"))
+
+
+@bp.route("/clusters/<int:cluster_id>/sync", methods=["POST"])
+@admin_required
+def sync_cluster(cluster_id: int):
+    from ..services.cluster_discovery import ClusterDiscoveryService
+
+    cluster = Cluster.query.get_or_404(cluster_id)
+    svc = ClusterDiscoveryService(cluster)
+    success, message = svc.run()
+
+    if success:
+        flash(f"Sync complete. {message}", "success")
+    else:
+        flash(f"Sync failed: {message}", "danger")
+
+    return redirect(url_for("admin.cluster_detail", cluster_id=cluster_id))
+
+
+@bp.route("/clusters/<int:cluster_id>/permissions/grant", methods=["POST"])
+@admin_required
+def grant_cluster_permission(cluster_id: int):
+    cluster = Cluster.query.get_or_404(cluster_id)
+    teams_without_perm = (
+        Team.query
+        .filter(~Team.id.in_(
+            db.session.query(TeamClusterPermission.team_id)
+            .filter_by(cluster_id=cluster_id)
+        ))
+        .order_by(Team.name.asc())
+        .all()
+    )
+    perm_form = TeamClusterPermissionForm()
+    perm_form.set_team_choices(teams_without_perm)
+
+    if perm_form.validate_on_submit():
+        perm = TeamClusterPermission(
+            team_id=perm_form.team_id.data,
+            cluster_id=cluster.id,
+            permission_level=perm_form.permission_level.data,
+        )
+        db.session.add(perm)
+        db.session.commit()
+        flash("Access granted.", "success")
+    else:
+        flash("Could not grant access. Please check the form.", "danger")
+
+    return redirect(url_for("admin.cluster_detail", cluster_id=cluster_id))
+
+
+@bp.route("/clusters/<int:cluster_id>/permissions/<int:perm_id>/revoke", methods=["POST"])
+@admin_required
+def revoke_cluster_permission(cluster_id: int, perm_id: int):
+    perm = TeamClusterPermission.query.get_or_404(perm_id)
+    db.session.delete(perm)
+    db.session.commit()
+    flash("Access revoked.", "success")
+    return redirect(url_for("admin.cluster_detail", cluster_id=cluster_id))
 
